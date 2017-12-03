@@ -1,17 +1,17 @@
 classdef SiltParticle < SoilParticle
     
-    properties
+    properties (Constant)
+        color =  [0.82, 0.71, 0.55];
+        name = "Silt";
     end
     
     methods
         
-        function init(self)
-            self.name = "Silt";
+        function self = SiltParticle(absorptionFactors)
+            self@SoilParticle()
             self.liquefactionEnergy = 7000;
-            self.currEnergy = 0;
             self.energyDecayFactor = 0.95;
-            self.isLiquefied = false;
-            self.absorptionFactors = [0.125, 0.75, 0.125, 0, 0]; % Replace this with a 100 size vector that sums to 1
+            self.absorptionFactors = absorptionFactors;
         end
     end
     

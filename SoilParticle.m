@@ -1,7 +1,6 @@
-classdef SoilParticle < CellType
+classdef SoilParticle < handle
 
     properties
-        name
         liquefactionEnergy
         currEnergy
         energyDecayFactor
@@ -10,6 +9,11 @@ classdef SoilParticle < CellType
     end
     
     methods
+        
+        function self = SoilParticle()
+            self.state = SoilParticleState.Solid;
+            self.currEnergy = 0;
+        end
     end
     
 end

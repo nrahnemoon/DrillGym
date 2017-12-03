@@ -1,17 +1,17 @@
 classdef ClayParticle < SoilParticle
     
-    properties
+    properties (Constant)
+        color = [0.55, 0.27, 0.07];
+        name = "Clay";
     end
     
     methods
         
-        function init(self)
-            self.name = "Clay";
+        function self = ClayParticle(absorptionFactors)
+            self@SoilParticle();
             self.liquefactionEnergy = 5000;
-            self.currEnergy = 0;
             self.energyDecayFactor = 0.9;
-            self.isLiquefied = false;
-            self.absorptionFactors = [0, 0, 0.125, 0.75, 0.125]; % Replace this with a 100 size vector that sums to 1
+            self.absorptionFactors = absorptionFactors;
         end
     end
     

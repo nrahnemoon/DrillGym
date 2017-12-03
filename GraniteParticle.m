@@ -1,17 +1,17 @@
 classdef GraniteParticle < SoilParticle
     
-    properties
+    properties (Constant)
+        color = [0.66, 0.66, 0.66];
+        name = "Granite";
     end
     
     methods
         
-        function init(self)
-            self.name = "Granite";
+        function self = GraniteParticle(absorptionFactors)
+            self@SoilParticle()
             self.liquefactionEnergy = 16000;
-            self.currEnergy = 0;
             self.energyDecayFactor = 0.99;
-            self.isLiquefied = false;
-            self.absorptionFactors = [0, 0.125, 0.75, 0.125, 0]; % Replace this with a 100 size vector that sums to 1
+            self.absorptionFactors = absorptionFactors;
         end
     end
     

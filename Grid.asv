@@ -1,0 +1,85 @@
+classdef Grid < handle
+
+    properties
+        map
+        particleClasses
+        particleDistributions
+        particleNames
+        mapSize % [height, width]
+        absorptionFactors
+        drill
+    end
+    
+    methods
+
+        function self = Grid(mapSize, particleClasses, particleDistributions, absorptionFactors, drill)
+            self.mapSize = mapSize;
+            self.particleClasses = particleClasses;
+            self.particleDistributions = particleDistributions;
+            self.absorptionFactors = absorptionFactors;
+            self.setParticleNames();
+            self.fillMap();
+            self.drill = drill;
+        end
+
+        function setParticleNames(self)
+            self.particleNames = strings(size(self.particleDistributions, 2), 1);
+            for i = 1:size(self.particleDistributions, 2)
+                self.particleNames(i) = eval(strcat(self.particleClasses(i), '.name'));
+            end
+        end
+
+        function colorDict = setColorMap(self)
+            colorDict = containers.Map;
+            nC = size(self.particleDistributions, 2) + 1; % + 1 for the drill
+            colorMap = zeros(nC, 3);
+            startColorIndex = int8(nC/2 - nC + 1);
+            for i = 1:size(self.particleDistributions, 2)
+                colorMap(i,:) = eval(strcat(self.particleClasses(i), '.color'));
+                colorDict(self.particleClasses(i)) = startColorIndex;
+                startColorIndex = startColorIndex + 1;
+            end
+            colorMap(i,:)
+            colormap(colorMap);
+        end
+
+        function fillMap(self)
+            self.map = cell(self.mapSize(1), self.mapSize(2));
+            for row = 1:self.mapSize(1)
+                for col = 1:self.mapSize(2)
+                    self.map{row, col} = self.getRandomSoilParticle();
+                end
+            end
+        end
+
+        function [particle] = getRandomSoilParticle(self)
+            random = rand();
+            curr = 0;
+            for i = 1:size(self.particleDistributions, 2)
+                curr = curr + self.particleDistributions(i);
+                if random < curr
+                    particle = eval(strcat(self.particleClasses(i), '(self.absorptionFactors.get("', self.particleClasses(i), '"))'));
+                    return;
+                end
+            end
+        end
+        
+        function updateDisplay(self)
+            particleColorMap = self.setColorMap();
+            [X,Y] = meshgrid(1:self.mapSize(2), 1:self.mapSize(1));
+            Z = zeros(self.mapSize(1), self.mapSize(2));
+            for i = 1:size(self.map, 1)
+                for j = 1:size(self.map, 2)
+                    Z(i, j) = particleColorMap(class(self.map{i, j}));
+                end
+            end
+            plot = pcolor(X,Y,Z);
+            set(plot, 'EdgeColor', [0.96, 0.64, 0.38]);
+            nP = size(self.particleDistributions, 2);
+            colorbar('YTick', (-1 + 1/nP):(2/nP):(1 - 1/nP), 'YTickLabel', cellstr(self.particleNames));
+            text(1.5, 1.5, '3000/5000', 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'white');
+        end
+    end
+    
+end
+
