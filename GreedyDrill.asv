@@ -1,0 +1,29 @@
+classdef GreedyDrill < Drill
+    
+	properties
+        samplingRate
+        isRandom
+        trueTransmissionEnergies
+        bestFeedbackEnergy
+	end
+    
+    methods
+        function self = GreedyDrill(samplingRate, numFrequencies, energyPerCycle)
+            self@Drill(numFrequencies, energyPerCycle);
+            self.name = "GreedyDrill";
+            self.setRandomEnergies();
+            self.samplingRate = samplingRate;
+            self.isRandom = false;
+            
+        end
+        
+        function receiveFeedbackEnergies(self, feedbackEnergies)
+            if isRandom
+                if sum(feedbackEnergies) 
+            else
+                if rand() < samplingRate
+                    self.trueTransmissionEnergies = self.transmissionEnergies
+        end
+    end
+end
+

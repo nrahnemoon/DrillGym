@@ -1,6 +1,0 @@
-gridSize = [20, 5]; % 100 rows, 5 columns
-gridParticleDistribution = containers.Map
-particlesClasses = ['ClayParticle', 'GraniteParticle', 'SiltParticle'];
-particleDistributions = [0.8, 0.1, 0.1]
-absorptionFactors = AbsorptionFacto
-grid = Grid(gridSize, particlesClasses, particleDistributions);

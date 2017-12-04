@@ -1,17 +1,17 @@
-classdef GraniteParticle < SoilParticle
+classdef SandParticle < SoilParticle
     
     properties (Constant)
-        color = [0.66, 0.66, 0.66];
-        name = "Granite";
-        reflectanceFactor = 0.95;
-        scatteringFactor = 0.05;
-        liquefactionEnergy = 1600;
-        energyDecayFactor = 0.99;
+        color =  [0.82, 0.71, 0.55];
+        name = "Sand";
+        reflectanceFactor = 0.5;
+        scatteringFactor = 0.5;
+        liquefactionEnergy = 700;
+        energyDecayFactor = 0.95;
     end
     
     methods
         
-        function self = GraniteParticle(absorptionFactors)
+        function self = SandParticle(absorptionFactors)
             self@SoilParticle(absorptionFactors)
             self.absorptionFactors = absorptionFactors;
             self.radiationFactors = ones(1, size(absorptionFactors, 2)) - absorptionFactors;

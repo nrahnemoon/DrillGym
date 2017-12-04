@@ -12,6 +12,10 @@ classdef Grid < handle
         mapSize % [height, width]
         absorptionFactors
         drill
+        drillRow
+        iterationNum
+        transmissionLoss
+        plots
     end
     
     methods
@@ -24,6 +28,30 @@ classdef Grid < handle
             self.setParticleNames();
             self.fillMap();
             self.drill = drill;
+            self.drillRow = self.mapSize(1);
+            self.closeRow(self.drillRow);
+            self.iterationNum = 0;
+            self.transmissionLoss = 0.9;
+        end
+
+        function play(self)
+            figure('units','normalized','outerposition', [0 0 1 1]); % Make figure full screen initially
+            axes('Units', 'normalized', 'Position', [0 0 1 1]); % Make plots take up entire figure space
+            self.updateDisplay();
+            while 1
+                self.iterate();
+                self.updateDisplay();
+                if self.drillRow == 1
+                    printf("Completed borehole drilling in %d iterations", self.iterationNum);
+                    return;
+                end
+            end
+        end
+
+        function closeRow(self, row)
+            for i = 1:size(self.map, 2)
+                self.map{row, i}.state = SoilParticleState.Drill;
+            end
         end
 
         function setParticleNames(self)
@@ -35,7 +63,7 @@ classdef Grid < handle
 
         function colorDict = setColorMap(self, isDrill, isLiquefied)
             colorDict = containers.Map;
-            nC = size(self.particleDistributions, 2) + int8(isDrill) + int8(isLiquefied); % + 2 for the drill and liquefiedColor
+            nC = size(self.particleDistributions, 2) + double(isDrill) + double(isLiquefied); % + 2 for the drill and liquefiedColor
             colorMap = zeros(nC, 3);
             startColorIndex = 1;
             for i = 1:size(self.particleDistributions, 2)
@@ -44,12 +72,12 @@ classdef Grid < handle
                 startColorIndex = startColorIndex + 1;
             end
             if isDrill
-                colorMap(nC - 1,:) = self.drill.color;
+                colorMap(startColorIndex,:) = self.drill.color;
                 colorDict('Drill') = startColorIndex;
                 startColorIndex = startColorIndex + 1;
             end
             if isLiquefied
-                colorMap(nC,:) = self.liquefiedColor;
+                colorMap(startColorIndex,:) = self.liquefiedColor;
                 colorDict('Liquefied') = startColorIndex;
             end
 
@@ -97,24 +125,175 @@ classdef Grid < handle
                     if self.map{i, j}.state == SoilParticleState.Solid
                         Z(i, j) = colorMap(char(self.map{i, j}.name));
                     elseif self.map{i, j}.state == SoilParticleState.Liquefied
-                        Z(i, j) = colorMap("Liquefied");
+                        Z(i, j) = colorMap('Liquefied');
                     elseif self.map{i, j}.state == SoilParticleState.Drill
-                        Z(i, j) = colorMap("Drill");
+                        Z(i, j) = colorMap('Drill');
                     end
                 end
             end
-            plot = pcolor(X,Y,Z);
-            set(plot, 'EdgeColor', [0.96, 0.64, 0.38]);
+            
+            plotSize = [];
+            for i = 1:(4 * (size(self.particleNames, 1) + 1))
+                plotSize = [plotSize, (16 * (i - 1)) + [1, 2, 3, 4, 5, 6, 7, 8]];
+            end
+            subplot(4 * (size(self.particleNames, 1) + 1), 16, plotSize);
+            pColorPlot = pcolor(X,Y,Z);
+            set(pColorPlot, 'EdgeColor', [0.3, 0.3, 0.3]);
             nP = double(colorMap.Count);
-            colorbar('YTick', (min(Z) + 1/nP):((max(Z)-min(Z))/nP):(max(Z) - 1/nP), 'YTickLabel', keys(colorMap));
+            colorKeys = cell(1, nP);
+            colorMapKeys = keys(colorMap);
+            for i = 1:nP
+                colorKeys{colorMap(colorMapKeys{i})} = colorMapKeys{i};
+            end
+            colorbar('YTick', (min(Z) + 1/nP):((max(Z)-min(Z))/nP):(max(Z) - 1/nP), 'YTickLabel', colorKeys);
             for i = 1:size(self.map, 1)
                 for j = 1:size(self.map, 2)
-                    cell = self.map{i, j};
-                    text(j+0.5, i+0.5, strcat(string(cell.currEnergy), '/', string(cell.liquefactionEnergy)), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'white');
+                    if self.map{i, j}.state ~= SoilParticleState.Drill
+                        mapCell = self.map{i, j};
+                        text(j+0.5, i+0.5, strcat(sprintf('%0.1f', mapCell.currEnergy), '/', string(mapCell.liquefactionEnergy)), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'white');
+                    end
+                end
+            end
+            text(1, self.mapSize(1) + 2.0, strcat("Iteration: ", num2str(self.iterationNum)), 'HorizontalAlignment', 'left', 'FontName', 'FixedWidth', 'Color', 'black', 'FontSize', 15);
+            hold on
+
+            % Plot for drill transmission energies
+            subplot(4 * (size(self.particleNames, 1) + 1), 16, [10, 11, 12, 13, 26, 27, 28, 29, 42, 43, 44, 45]);
+            numFrequencies = size(self.absorptionFactors.particleAbsorptionFactors, 2);
+            frequencies = linspace(1, numFrequencies, numFrequencies);
+            if self.iterationNum > 1
+                for i = 1:(size(self.particleNames,1)+1)
+                    cla(self.plots(i));
+                end
+            end
+            drillPlot = area(frequencies, self.drill.transmissionEnergies);
+            drillPlot(1).FaceColor = self.drill.color;
+            self.plots(1) = drillPlot;
+            hold on
+            %title(strcat(self.drill.name, "'s Transmission Energies"));
+            xlabel('Frequencies');
+            ylabel('Transmission Energy');
+            ylim([0, 1000])
+            
+            for i = 1:size(self.absorptionFactors.particleClasses,2)
+                subplot(4 * (size(self.particleNames, 1) + 1), 16, (4 * 16 * i) + [10, 11, 12, 13, 26, 27, 28, 29,  42, 43, 44, 45]);
+                soilName = eval(strcat(self.absorptionFactors.particleClasses(i), ".name"));
+                soilColor = eval(strcat(self.absorptionFactors.particleClasses(i), ".color"));
+                soilPlot = area(frequencies, self.absorptionFactors.particleAbsorptionFactors(i,:));
+                soilPlot(1).FaceColor = soilColor;
+                self.plots(i+1) = soilPlot;
+                hold on
+                %title(strcat(soilName, "'s Absorption Factors"));
+                xlabel('Frequencies');
+                ylabel('Absorption Factor');
+                ylim([0, 1])
+            end
+            
+            ax = subplot(4 * (size(self.particleNames, 1) + 1), 16, [15, 16]);
+            text(0.5, 0.25, self.drill.name, 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black', 'FontSize', 14);
+            text(0.5, -0.5, strcat("Energy per cycle = ", num2str(self.drill.energyPerCycle)), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black');
+            text(0.5, -1.0, strcat("Drill depth = ", num2str((self.drillRow + 1) - self.mapSize(1))), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black');
+            set (ax, 'visible', 'off');
+            axis off
+            hold on
+            
+            for i = 1:size(self.absorptionFactors.particleClasses,2)
+                soilName = eval(strcat(self.absorptionFactors.particleClasses(i), ".name"));
+                soilLiquefactionEnergy = eval(strcat(self.absorptionFactors.particleClasses(i), ".liquefactionEnergy"));
+                soilEnergyDecayFactor = eval(strcat(self.absorptionFactors.particleClasses(i), ".energyDecayFactor"));
+                soilReflectanceFactor = eval(strcat(self.absorptionFactors.particleClasses(i), ".reflectanceFactor"));
+                soilScatteringFactor = eval(strcat(self.absorptionFactors.particleClasses(i), ".scatteringFactor"));
+
+                ax = subplot(4 * (size(self.particleNames, 1) + 1), 16, (4 * 16 * i) + [15, 16]);
+                text(0.5, 0.25, soilName, 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black', 'FontSize', 14);
+                text(0.5, -0.5, strcat("Liquefaction Energy = ", num2str(soilLiquefactionEnergy)), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black');
+                text(0.5, -1.0, strcat("Engergy Decay Factor = ", num2str(soilEnergyDecayFactor)), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black');
+                text(0.5, -1.5, strcat("Reflectance Factor = ", num2str(soilReflectanceFactor)), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black');
+                text(0.5, -2.0, strcat("Scattering Factor = ", num2str(soilScatteringFactor)), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black');
+                
+                set (ax, 'visible', 'off');
+                axis off
+                hold on
+            end
+
+            pause(0.00001);
+        end
+        
+        function iterate(self)
+            self.iterationNum = self.iterationNum + 1;
+            
+            % For the rows that are "drills", reset energies
+            for i=self.mapSize(1):self.drillRow
+                for j=1:self.mapSize(2)
+                    self.map{i, j}.resetEnergies();
+                end
+            end
+
+            for j=1:self.mapSize(2)
+                    self.map{(self.drillRow - 1), j}.receiveEnergies(self.transmissionLoss .* (self.drill.transmissionEnergies./self.mapSize(2)));
+            end
+
+            leftoverEnergies = zeros(self.mapSize(1), self.mapSize(2), size(self.absorptionFactors.particleAbsorptionFactors, 2));
+            neighbors = [[-1, 0]; [0, 1]; [1, 0]; [0, -1]];
+            for i=1:(self.drillRow - 1)
+                for j=1:self.mapSize(2)
+                    latentLeftoverEnergies = self.map{i, j}.decayEnergy();
+                    transmitLeftoverEnergies = self.map{i, j}.dumpLeftoverEnergies();
+                    reflectanceEnergies = (latentLeftoverEnergies ./ 4)' + (transmitLeftoverEnergies .* self.map{i, j}.reflectanceFactor)';
+                    scatterEnergies = (latentLeftoverEnergies ./ 4)' + (transmitLeftoverEnergies .* (self.map{i, j}.scatteringFactor/3))';
+                    for k = 1:size(neighbors, 1)
+                        if self.isValidPos((i + neighbors(k, 1)), (j + neighbors(k, 2)))
+                            currNeighborLeftoverEnergies = reshape(leftoverEnergies((i + neighbors(k,1)), (j + neighbors(k, 2)), :), [size(leftoverEnergies,3), 1]);
+                            if neighbors(k, 1) == 1 && neighbors(k, 2) == 0
+                                leftoverEnergies((i + neighbors(k,1)), (j + neighbors(k, 2)), :) = currNeighborLeftoverEnergies + reflectanceEnergies;
+                            else
+                                leftoverEnergies((i + neighbors(k,1)), (j + neighbors(k, 2)), :) = currNeighborLeftoverEnergies + scatterEnergies;
+                            end
+                        end
+                    end
+                end
+            end
+            
+            for i=1:self.mapSize(1)
+                for j=1:self.mapSize(2)
+                    self.map{i, j}.receiveEnergies(self.transmissionLoss .* reshape(leftoverEnergies(i,j,:), [1, size(leftoverEnergies,3)]));
+                end
+            end
+            
+            drillFeedbackEnergies = zeros(1, size(self.absorptionFactors.particleAbsorptionFactors, 2));
+            for i=self.mapSize(1):self.drillRow
+                for j=1:self.mapSize(2)
+                    drillFeedbackEnergies = drillFeedbackEnergies + self.map{i, j}.dumpLeftoverEnergies();
+                end
+            end
+            self.drill.receiveFeedbackEnergies(drillFeedbackEnergies);
+
+            while 1
+                currRowLiquefied = true;
+                for i = 1:self.mapSize(2)
+                    if self.map{(self.drillRow - 1), i}.state ~= SoilParticleState.Liquefied
+                        currRowLiquefied = false;
+                    end
+                end
+                if currRowLiquefied
+                    self.closeRow(self.drillRow - 1);
+                    self.drillRow = self.drillRow - 1;
+                    if self.drillRow == 1
+                        return
+                    end
+                else
+                    break;
                 end
             end
         end
+        
+        function isValid = isValidPos(self, i, j)
+            if (i <= self.mapSize(1) && i >= 1 && j <= self.mapSize(2) && j >= 1)
+                isValid = true;
+            else
+                isValid = false;
+            end
+        end
     end
-    
 end
 
