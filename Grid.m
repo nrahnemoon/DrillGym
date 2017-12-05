@@ -2,6 +2,7 @@ classdef Grid < handle
 
     properties (Constant)
         liquefiedColor = [0.49, 0.99, 0];
+        s = 1; % seed
     end
 
     properties
@@ -96,6 +97,7 @@ classdef Grid < handle
         end
 
         function [particle] = getRandomSoilParticle(self)
+            %rng(self.s); % Seeding Random 
             random = rand();
             curr = 0;
             for i = 1:size(self.particleDistributions, 2)
