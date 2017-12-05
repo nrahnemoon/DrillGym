@@ -16,6 +16,7 @@ classdef Grid < handle
         iterationNum
         transmissionLoss
         plots
+        plotTexts
     end
     
     methods
@@ -32,6 +33,7 @@ classdef Grid < handle
             self.closeRow(self.drillRow);
             self.iterationNum = 0;
             self.transmissionLoss = 0.9;
+            self.plotTexts = [];
         end
 
         function play(self)
@@ -42,7 +44,7 @@ classdef Grid < handle
                 self.iterate();
                 self.updateDisplay();
                 if self.drillRow == 1
-                    printf("Completed borehole drilling in %d iterations", self.iterationNum);
+                    disp(strcat("Completed ultrasonic drilling in ", num2str(self.iterationNum), " iterations!"));
                     return;
                 end
             end
@@ -145,7 +147,7 @@ classdef Grid < handle
             for i = 1:nP
                 colorKeys{colorMap(colorMapKeys{i})} = colorMapKeys{i};
             end
-            colorbar('YTick', (min(Z) + 1/nP):((max(Z)-min(Z))/nP):(max(Z) - 1/nP), 'YTickLabel', colorKeys);
+            colorbar('YTick', (min(min(Z)) + 1/nP):((max(max(Z))-min(min(Z)))/nP):(max(max(Z)) - 1/nP), 'YTickLabel', colorKeys);
             for i = 1:size(self.map, 1)
                 for j = 1:size(self.map, 2)
                     if self.map{i, j}.state ~= SoilParticleState.Drill
@@ -161,18 +163,30 @@ classdef Grid < handle
             subplot(4 * (size(self.particleNames, 1) + 1), 16, [10, 11, 12, 13, 26, 27, 28, 29, 42, 43, 44, 45]);
             numFrequencies = size(self.absorptionFactors.particleAbsorptionFactors, 2);
             frequencies = linspace(1, numFrequencies, numFrequencies);
-            if self.iterationNum > 1
-                for i = 1:(size(self.particleNames,1)+1)
-                    cla(self.plots(i));
-                end
+            for i = 1:size(self.plots, 2)
+                cla(self.plots(i));
             end
-            drillPlot = area(frequencies, self.drill.transmissionEnergies);
-            drillPlot(1).FaceColor = self.drill.color;
-            self.plots(1) = drillPlot;
+            self.plots = [];
+            for i = 1:(size(self.plotTexts, 2))
+                delete(self.plotTexts(1, i));
+            end
+            self.plotTexts = [];
+            if isempty(self.drill.feedbackEnergies)
+                drillPlot = area(frequencies, [self.drill.transmissionEnergies]);
+                drillPlot.FaceColor = self.drill.color;
+                self.plots = [self.plots, drillPlot];
+                legend('T.E.');
+            else
+                drillPlot = area(frequencies, [self.drill.feedbackEnergies; self.drill.transmissionEnergies]');
+                drillPlot(2).FaceColor = self.drill.color;
+                drillPlot(1).FaceColor = [0.68, 0.85,0.90];
+                self.plots = [ self.plots, drillPlot(1) ];
+                legend('F.E.', 'T.E.');
+            end
             hold on
             %title(strcat(self.drill.name, "'s Transmission Energies"));
             xlabel('Frequencies');
-            ylabel('Transmission Energy');
+            ylabel('Energy');
             ylim([0, 1000])
             
             for i = 1:size(self.absorptionFactors.particleClasses,2)
@@ -181,7 +195,7 @@ classdef Grid < handle
                 soilColor = eval(strcat(self.absorptionFactors.particleClasses(i), ".color"));
                 soilPlot = area(frequencies, self.absorptionFactors.particleAbsorptionFactors(i,:));
                 soilPlot(1).FaceColor = soilColor;
-                self.plots(i+1) = soilPlot;
+                self.plots = [self.plots, soilPlot];
                 hold on
                 %title(strcat(soilName, "'s Absorption Factors"));
                 xlabel('Frequencies');
@@ -190,9 +204,13 @@ classdef Grid < handle
             end
             
             ax = subplot(4 * (size(self.particleNames, 1) + 1), 16, [15, 16]);
-            text(0.5, 0.25, self.drill.name, 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black', 'FontSize', 14);
-            text(0.5, -0.5, strcat("Energy per cycle = ", num2str(self.drill.energyPerCycle)), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black');
-            text(0.5, -1.0, strcat("Drill depth = ", num2str((self.drillRow + 1) - self.mapSize(1))), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black');
+            self.plotTexts = [ self.plotTexts, text(0.5, 0.25, self.drill.name, 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black', 'FontSize', 14) ];
+            self.plotTexts = [ self.plotTexts, text(0.5, -0.5, strcat("Energy per cycle = ", num2str(self.drill.energyPerCycle)), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black') ];
+            self.plotTexts = [ self.plotTexts, text(0.5, -1.0, strcat("Drill depth = ", num2str((self.mapSize(1) + 1) - self.drillRow)), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black') ];
+            descriptions = strsplit(self.drill.description, '|');
+            for i = 1:size(descriptions, 2)
+                self.plotTexts = [ self.plotTexts, text(0.5,(i * -0.5 - 1.25), descriptions(i), 'HorizontalAlignment', 'center', 'FontName', 'FixedWidth', 'Color', 'black'); ]
+            end
             set (ax, 'visible', 'off');
             axis off
             hold on
@@ -261,7 +279,7 @@ classdef Grid < handle
             end
             
             drillFeedbackEnergies = zeros(1, size(self.absorptionFactors.particleAbsorptionFactors, 2));
-            for i=self.mapSize(1):self.drillRow
+            for i=self.drillRow:self.mapSize(1)
                 for j=1:self.mapSize(2)
                     drillFeedbackEnergies = drillFeedbackEnergies + self.map{i, j}.dumpLeftoverEnergies();
                 end

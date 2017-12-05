@@ -8,7 +8,7 @@ classdef (Abstract) Drill < handle
         energyPerCycle
         transmissionEnergies % Per Frequency
         numFrequencies
-        name
+        feedbackEnergies
     end
     
     methods (Abstract)

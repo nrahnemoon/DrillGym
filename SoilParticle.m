@@ -34,9 +34,8 @@ classdef SoilParticle < handle
                     self.state = SoilParticleState.Solid;
                 end
             end
-            
         end
-        
+
         function leftoverEnergies = decayEnergy(self)
             self.currEnergy = self.currEnergy * self.energyDecayFactor;
             leftoverEnergies = self.radiationFactors .* self.currEnergy;

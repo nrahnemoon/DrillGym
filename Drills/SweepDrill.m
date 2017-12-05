@@ -1,16 +1,20 @@
 classdef SweepDrill < Drill
     
+    properties (Constant)
+        name = "SweepDrill";
+        description = "Sweeps all the frequencies|first and then chooses|the best frequency."
+    end
+
 	properties
         sweepFrequency
         sweepStep
         trueTransmissionEnergies
         bestFeedbackEnergy
-	end
+    end
     
     methods
         function self = SweepDrill(numFrequencies, energyPerCycle)
             self@Drill(numFrequencies, energyPerCycle);
-            self.name = "SweepDrill";
             self.sweepFrequency = 1;
             self.sweepStep = 5;
             self.bestFeedbackEnergy = energyPerCycle;
@@ -19,6 +23,7 @@ classdef SweepDrill < Drill
         end
         
         function receiveFeedbackEnergies(self, feedbackEnergies)
+            self.feedbackEnergies = feedbackEnergies;
             if self.sweepFrequency ~= -1
                 if sum(feedbackEnergies) < self.bestFeedbackEnergy
                     self.trueTransmissionEnergies = self.transmissionEnergies;

@@ -1,5 +1,10 @@
 classdef GreedyDrill < Drill
     
+    properties (Constant)
+        name = "GreedyDrill";
+        description = "Transmits random normal transmission|energies every so often and|defaults to the best it's seen."
+    end
+
 	properties
         samplingRate
         isRandom
@@ -10,7 +15,6 @@ classdef GreedyDrill < Drill
     methods
         function self = GreedyDrill(samplingRate, numFrequencies, energyPerCycle)
             self@Drill(numFrequencies, energyPerCycle);
-            self.name = "GreedyDrill";
             self.setRandomEnergies();
             self.samplingRate = samplingRate;
             self.isRandom = false;
@@ -18,6 +22,7 @@ classdef GreedyDrill < Drill
         end
         
         function receiveFeedbackEnergies(self, feedbackEnergies)
+            self.feedbackEnergies = feedbackEnergies;
             if self.isRandom
                 if sum(feedbackEnergies) < self.bestFeedbackEnergy
                     self.bestFeedbackEnergy = sum(feedbackEnergies);
