@@ -50,6 +50,35 @@ classdef Grid < handle
                 end
             end
         end
+        
+        
+        function playWithoutDisplay(self)
+            figure('units','normalized','outerposition', [0 0 1 1]); % Make figure full screen initially
+            axes('Units', 'normalized', 'Position', [0 0 1 1]); % Make plots take up entire figure space
+            self.updateDisplay();
+            while 1
+                self.iterate();
+            end
+        end
+        
+
+        function fillMapByMapString(self, mapString)
+            for i = 1:size(mapString,1)
+                for j = 1:size(mapString, 2)
+                    aF = self.absorptionFactors.get(mapString(i,j));
+                    self.map{i,j} = eval(strcat(mapString(i,j), '(aF)'));
+                end
+            end
+        end
+
+        function  mapString = getMapString(self)
+            mapString = strings(size(self.map,1), size(self.map,2));
+            for i = 1:size(self.map,1)
+                for j = 1:size(self.map,2)
+                    mapString(i,j) = class(self.map{i,j});
+                end
+            end
+        end
 
         function closeRow(self, row)
             for i = 1:size(self.map, 2)
@@ -236,7 +265,7 @@ classdef Grid < handle
                 hold on
             end
 
-            pause(0.00001);
+            pause(0.00000001);
         end
         
         function iterate(self)

@@ -1,7 +1,7 @@
-classdef SimpleExploitationDrill < Drill
+classdef EXP3Drill < Drill
     
     properties (Constant)
-        name = "SimpleExploitation Drill";
+        name = "EXP3 Drill";
         description = "Does a exploration of all | Bandits and exploits the | one with local maxima";
     end
     
@@ -9,7 +9,7 @@ classdef SimpleExploitationDrill < Drill
     end
 
     methods
-        function self = SimpleExploitationDrill(numFrequencies, energyPerCycle)
+        function self = EXP3Drill(numFrequencies, energyPerCycle)
             self@Drill(numFrequencies, energyPerCycle);
             self.setUniformEnergies();
         end
@@ -17,13 +17,14 @@ classdef SimpleExploitationDrill < Drill
         function receiveFeedbackEnergies(self, feedbackEnergies)
             self.feedbackEnergies = feedbackEnergies;
             self.transmissionEnergies = self.transmissionEnergies - self.feedbackEnergies; % Loss
+            
             % Best Bandit - Exploration
             [Val, Idx] =  max(self.transmissionEnergies);
             
             % Exploitation
-            self.transmissionEnergies(self.transmissionEnergies < Val) = 0;; % Set Everything Else to zero
-            
-            self.transmissionEnergies = self.transmissionEnergies .* (self.energyPerCycle/sum(self.transmissionEnergies));
+            % Set Everything Else to zero
+            self.transmissionEnergies(self.transmissionEnergies < Val) = 0;
+            self.transmissionEnergies = self.transmissionEnergies .* (self.energyPerCycle/100);
         end
     end
 end
